@@ -1,7 +1,7 @@
-import { makeAutoObservable } from 'mobx'
-import { useLocalObservable } from 'mobx-react-lite'
-import { nanoid } from 'nanoid'
-import { createContext, FC, useContext } from 'react'
+import { makeAutoObservable, reaction } from 'mobx';
+import { useLocalObservable } from 'mobx-react-lite';
+import { nanoid } from 'nanoid';
+import { createContext, FC, useContext, useEffect } from 'react';
 
 export interface ITodo {
   id: string;
@@ -10,46 +10,53 @@ export interface ITodo {
 }
 
 export class TodoListStore {
-  list: ITodo[] = [
-    { id: 'name', title: 'test', done: false }
-  ]
+  list: ITodo[];
   constructor() {
-    makeAutoObservable(this)
+    makeAutoObservable(this);
+    const storage = localStorage.getItem('todoStore');
+    this.list = (storage ? JSON.parse(storage) : []) as ITodo[];
   }
   add(title: string) {
     this.list.push({
-      id: nanoid(), title, done: false
-    })
+      id: nanoid(),
+      title,
+      done: false,
+    });
   }
   remove(todo: ITodo) {
-    const index = this.list.indexOf(todo)
-    this.list.splice(index, 1)
+    const index = this.list.indexOf(todo);
+    this.list.splice(index, 1);
   }
   update(todo: ITodo, title: string) {
-    todo.title = title
+    todo.title = title;
   }
   toggle(todo: ITodo) {
-    todo.done = !todo.done
+    todo.done = !todo.done;
   }
   get numOfAll() {
-    return this.list.length
+    return this.list.length;
   }
   get numOfUndone() {
-    return this.list.filter(todo => !todo.done).length
+    return this.list.filter((todo) => !todo.done).length;
   }
 }
 
-const StoreContext = createContext<TodoListStore>(undefined!)
+export const StoreContext = createContext<TodoListStore>(undefined!);
 
 export const StoreProvider: FC = ({ children }) => {
-  const store = useLocalObservable(() => new TodoListStore())
+  const store = useLocalObservable(() => new TodoListStore());
+  useEffect(() => {
+    return reaction(
+      () => JSON.stringify(store.list),
+      (json) => localStorage.setItem('todoStore', json),
+      { delay: 500 }
+    );
+  }, [store]);
   return (
-    <StoreContext.Provider value={store}>
-      {children}
-    </StoreContext.Provider>
-  )
-}
+    <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+  );
+};
 
 export const useStore = () => {
-  return useContext(StoreContext)
-}
+  return useContext(StoreContext);
+};
